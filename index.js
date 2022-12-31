@@ -1,12 +1,14 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const nodemailer = require('nodemailer');
 const sgTransport = require('nodemailer-sendgrid-transport');
 const port = process.env.PORT || 5000;
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
+
 
 //middleware
 app.use(cors());
@@ -73,6 +75,36 @@ function sendAppointmentEmail(booking){
     console.log(res);
   });
   } 
+// send payment confirmation email 
+function sendPaymentConfirmationEmail(booking){
+  const {patient, patientName, treatment, date, slot} = booking;
+
+  const email = {
+    to: patient,
+    from: process.env.EMAIL_SENDER,
+    subject: `We have received your payment for ${treatment} is on ${date} at ${slot} is confirmed`,
+    text: `Your payment for this Appointment ${treatment} is on ${date} at ${slot} is confirmed`,
+    html: `
+    <div>
+      <h3>Hello ${patientName}</h3>
+      <p>We have received your payment.</p>
+      <p>Thank you for your payment.</p>
+      <p>Looking forward to seeing you on ${date} at ${slot}</p> 
+      <h4>Our Address:</h4>
+      <p>Barishal Rupatali</p>
+      <p>Bangladesh</p>
+      <a href="https://web.programming-hero.com/">unsubscribed</a>
+    </div>
+    `,
+};
+
+  mailer.sendMail(email, function(err, res) {
+    if (err) { 
+        console.log(err) 
+    }
+    console.log(res);
+  });
+  } 
 
 async function run() {
   try {
@@ -85,6 +117,7 @@ async function run() {
       .collection("bookings");
     const userCollection = client.db("doctors_portal").collection("users");
     const doctorCollection = client.db("doctors_portal").collection("doctors");
+    const paymentCollection = client.db("doctors_portal").collection("payments");
 
     // verifyAdmin
     const verifyAdmin = async(req, res, next) => {
@@ -98,6 +131,20 @@ async function run() {
         res.status(403).send({message: 'forbidden'})
       }
     }
+
+    // Stripe post api
+    app.post('/create-payment-intent', verifyJWT, async(req, res) => {
+      const service = req.body;
+      const price = service.price;
+      const amount = price*100;
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      });
+      res.send({clientSecret: paymentIntent.client_secret})
+    })
+
 
     // GET API
     app.get("/service", async (req, res) => {
@@ -213,6 +260,30 @@ async function run() {
         return res.status(403).send({ message: "forbidden access" });
       }
     });
+
+    // Payment booking GET API
+    app.get('/booking/:id', verifyJWT, async(req, res) => {
+      const id = req.params.id;
+      const query = {_id: ObjectId(id)}
+      const booking = await bookingCollection.findOne(query);
+      res.send(booking);
+    })
+
+    // Paid Payment Patch API
+    app.patch('/booking/:id', verifyJWT, async(req, res) => {
+      const id = req.params.id;
+      const payment = req.body;
+      const filter = {_id: ObjectId(id)};
+      const updatedDoc = {
+        $set: {
+          paid: true,
+          transactionId: payment.transactionId
+        }
+      }
+      const result = await paymentCollection.insertOne(payment)
+      const updatedBooking = await bookingCollection.updateOne(filter, updatedDoc);
+      res.send(updatedDoc)
+    })
 
     // Doctor GET API
     app.get('/doctor', verifyJWT, verifyAdmin, async(req, res) => {
