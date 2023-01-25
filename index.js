@@ -108,7 +108,7 @@ function sendPaymentConfirmationEmail(booking){
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
     const servicesCollection = client
       .db("doctors_portal")
       .collection("services");
