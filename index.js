@@ -108,12 +108,12 @@ function sendPaymentConfirmationEmail(booking){
 
 async function run() {
   try {
-    // await client.connect();
+    await client.connect();
     const servicesCollection = client
       .db("doctors_portal")
       .collection("services");
     const bookingCollection = client
-      .db("doctors_portal")
+      .db("doctors_portal") 
       .collection("bookings");
     const userCollection = client.db("doctors_portal").collection("users");
     const doctorCollection = client.db("doctors_portal").collection("doctors");
