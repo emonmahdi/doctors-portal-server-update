@@ -118,6 +118,7 @@ async function run() {
     const userCollection = client.db("doctors_portal").collection("users");
     const doctorCollection = client.db("doctors_portal").collection("doctors");
     const paymentCollection = client.db("doctors_portal").collection("payments");
+    const reviewCollection = client.db("doctors_portal").collection("review");
 
     // verifyAdmin
     const verifyAdmin = async(req, res, next) => {
@@ -303,6 +304,28 @@ async function run() {
       const filter = {email: email};
       const result = await doctorCollection.deleteOne(filter);
       res.send(result)
+    });
+
+    // DELETE API - user delete
+    app.delete('/user/:email',  verifyJWT, verifyAdmin, async(req, res) => {
+      const email = req.params.email;
+      const filter = {email: email};
+      const user = await userCollection.deleteOne(filter);
+      res.send(user);
+    });
+
+    // POST API - Review
+    app.post('/review', async(req, res) => {
+      const reviews = req.body;
+      const review = await reviewCollection.insertOne(reviews);
+      res.send(review);
+    });
+
+    // GET API - Review
+    app.get('/review', async(req, res) => {
+      const query = {};
+      const reviews = await reviewCollection.find(query).toArray();
+      res.send(reviews);
     })
 
     /* 
