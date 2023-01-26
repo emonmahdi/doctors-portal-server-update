@@ -297,7 +297,15 @@ async function run() {
       const doctor = req.body;
       const result = await doctorCollection.insertOne(doctor);
       res.send(result)
+    });
+
+    // GET API - Doctor
+    app.get('/doctor', verifyJWT, async(req, res) => {
+      const query = {};
+      const doctors = await doctorCollection.find(query).toArray();
+      res.send(doctors);
     })
+
     // Doctor DELETE API
     app.delete('/doctor/:email', verifyJWT, verifyAdmin, async(req, res) => {
       const email = req.params.email;
