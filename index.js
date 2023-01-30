@@ -300,9 +300,9 @@ async function run() {
     });
 
     // GET API - Doctor
-    app.get('/doctor', verifyJWT, async(req, res) => {
+    app.get('/all/doctor', async(req, res) => {
       const query = {};
-      const doctors = await doctorCollection.find(query).toArray();
+      const doctors = await doctorCollection.find().toArray();
       res.send(doctors);
     })
 
