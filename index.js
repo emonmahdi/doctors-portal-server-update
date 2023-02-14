@@ -119,6 +119,8 @@ async function run() {
     const doctorCollection = client.db("doctors_portal").collection("doctors");
     const paymentCollection = client.db("doctors_portal").collection("payments");
     const reviewCollection = client.db("doctors_portal").collection("review");
+    const blogCollection = client.db("doctors_portal").collection("blogs");
+    const faqCollection = client.db("doctors_portal").collection("faqs");
 
     // verifyAdmin
     const verifyAdmin = async(req, res, next) => {
@@ -160,7 +162,7 @@ async function run() {
       res.send(users);
     });
 
-    // check admin or not API
+    // check admin or not-- GET API
     app.get('/admin/:email', async(req, res) => {
       const email = req.params.email;
       const user = await userCollection.findOne({email: email});
@@ -180,7 +182,8 @@ async function run() {
     });
     // PUT API USER
     app.put("/user/:email", async (req, res) => {
-      const email = req.params.email;
+      const email = req.params.email; 
+      console.log(role);
       const user = req.body;
       const filter = { email: email };
       const options = { upsert: true };
@@ -195,12 +198,29 @@ async function run() {
       );
       res.send({ result, token });
     });
+    // Make Doctor PUT API
+    app.put('/admin/doctor/:email', verifyJWT, async(req, res) => {
+      const email = req.params.email;
+      const filter = {email: email};
+      const updateDoc ={
+        $set: {role: 'doctor'}
+      };
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result)
+    })
 
+    // Check Doctor - GET API
+    app.get('/doctor/:email', async(req, res) => {
+      const email = req.params.email;
+      const user = await userCollection.findOne({email: email});
+      const isDoctor = user.role === 'doctor'
+      res.send({doctor: isDoctor})
+    })
     // Warning:
     // This is not the proper way
 
     app.get("/available", async (req, res) => {
-      const date = req?.query?.date || "Dec 4, 2022";
+      const date = req?.query?.date;
 
       // step: 1: get all services data
       const services = await servicesCollection.find().toArray();
@@ -209,7 +229,7 @@ async function run() {
       const query = { date: date };
       const bookings = await bookingCollection.find(query).toArray();
 
-      //step:3 - for each service,
+     /*  //step:3 - for each service,
       services.forEach((service) => {
         // step 4: find booking for that service
         const serviceBookings = bookings.filter(
@@ -226,6 +246,19 @@ async function run() {
         // step 7: set available to slots to make it easier
         service.slots = available;
       });
+ */
+    // step 3: for each service
+    services.forEach(service => {
+      // step 4: find bookings for that service. output: [{}, {}, {}, {}]
+      const serviceBookings = bookings.filter(book => book.treatment === service.name);
+      // step 5: select slots for the service Bookings: ['', '', '', '']
+      const bookedSlots = serviceBookings.map(book => book.slot);
+      // step 6: select those slots that are not in bookedSlots
+      const available = service.slots.filter(slot => !bookedSlots.includes(slot));
+      //step 7: set available to slots to make it easier 
+      service.slots = available;
+    });
+
 
       res.send(services);
     });
@@ -284,6 +317,13 @@ async function run() {
       const result = await paymentCollection.insertOne(payment)
       const updatedBooking = await bookingCollection.updateOne(filter, updatedDoc);
       res.send(updatedDoc)
+    });
+    // Total Booking GET API
+    app.get('/all/bookings', async(req, res) => {
+      const query = {};
+      const bookings = bookingCollection.find(query);
+      const booking = await bookings.toArray();
+      res.send(booking);
     })
 
     // Doctor GET API
@@ -335,6 +375,41 @@ async function run() {
       const reviews = await reviewCollection.find(query).toArray();
       res.send(reviews);
     })
+
+    // POST API - Blog
+    app.post('/blog', async(req, res) => {
+      const blogs = req.body;
+      const blog = await blogCollection.insertOne(blogs);
+      res.send(blog);
+    });
+
+    // GET API - Blog
+    app.get('/blog', async(req, res) => {
+      const query = {};
+      const blogs = await blogCollection.find(query).toArray();
+      res.send(blogs);
+    });
+     // Payment booking GET API
+     app.get('/blog/:id', async(req, res) => {
+      const id = req.params.id;
+      const query = {_id: ObjectId(id)}
+      const blog = await blogCollection.findOne(query);
+      res.send(blog);
+    });
+
+    // POST API - FAQ
+    app.post('/faq', async(req, res) => {
+      const faqs = req.body;
+      const faq = await faqCollection.insertOne(faqs);
+      res.send(faq);
+    });
+
+    // GET API - FAQ
+    app.get('/faq', async(req, res) => {
+      const query = {};
+      const faqs = await faqCollection.find(query).toArray();
+      res.send(faqs);
+    });
 
     /* 
           // API naming convention
