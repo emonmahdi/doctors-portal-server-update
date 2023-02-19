@@ -397,7 +397,7 @@ async function run() {
       res.send(blog);
     });
 
-    // POST API - FAQ
+    // POST API - FAQ  
     app.post('/faq', async(req, res) => {
       const faqs = req.body;
       const faq = await faqCollection.insertOne(faqs);
