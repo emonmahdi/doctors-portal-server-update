@@ -121,6 +121,7 @@ async function run() {
     const reviewCollection = client.db("doctors_portal").collection("review");
     const blogCollection = client.db("doctors_portal").collection("blogs");
     const faqCollection = client.db("doctors_portal").collection("faqs");
+    const questionCollection = client.db("doctors_portal").collection("questions");
 
     // verifyAdmin
     const verifyAdmin = async(req, res, next) => {
@@ -166,7 +167,7 @@ async function run() {
     app.get('/admin/:email', async(req, res) => {
       const email = req.params.email;
       const user = await userCollection.findOne({email: email});
-      const isAdmin = user.role === 'admin';
+      const isAdmin = user?.role === 'admin';
       res.send({admin: isAdmin});
     })
 
@@ -212,7 +213,7 @@ async function run() {
     app.get('/doctor/:email', async(req, res) => {
       const email = req.params.email;
       const user = await userCollection.findOne({email: email});
-      const isDoctor = user.role === 'doctor'
+      const isDoctor = user?.role === 'doctor'
       res.send({doctor: isDoctor})
     })
     // Warning:
@@ -338,6 +339,14 @@ async function run() {
       res.send(result)
     });
 
+    // Doctor UPDATE API by ID
+    app.get('/doctors/:id', async(req, res) => {
+      const id = req.params.id;
+      const query = {_id: ObjectId(id)};
+      const result = await doctorCollection.findOne(query);
+      res.send(result);
+    })
+
     // GET API - Doctor
     app.get('/all/doctor', async(req, res) => {
       const query = {};
@@ -409,6 +418,25 @@ async function run() {
       const faqs = await faqCollection.find(query).toArray();
       res.send(faqs);
     });
+
+
+    // POST API - ASK QUESTION  
+    app.post('/question', async(req, res) => {
+      const body = req.body;
+      const question = await questionCollection.insertOne(body);
+      res.send(question);
+    });
+
+    // UPDATE PUT API - BOOKING API
+    app.put('/booking/status/:id', async(req, res) => {
+      const id = req.params.id;
+      const updateInfo = req.body;
+      const result = await bookingCollection.updateOne(
+        {_id: ObjectId(id)},
+        {$set: {status: updateInfo.status}}
+      );
+      res.send(result)
+    })
 
     /* 
           // API naming convention
